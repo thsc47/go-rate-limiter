@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  redis:
+    container_name: rate-limiter_redis
+    image: redis:7.2.4-alpine3.19
+    env_file:
+      - path: ./.env
+        required: true
+    ports:
+      - "${REDIS_PORT}:${REDIS_PORT}"
+    volumes:
+      - redis-data:/data
+    networks:
+      - default
+
+  k6:
+    container_name: rate-limiter_k6
+    image: grafana/k6:latest
+    ports:
+      - "6565:6565"
+    volumes:
+      - ./scripts/k6:/scripts
+    networks:
+      - default
+    environment:
+      - K6_WEB_DASHBOARD=true
+
+  api:
+    env_file:
+      - path: ./.env
+        required: true
+    container_name: rate-limiter_api
+    image: mathcale/goexpert-rate-limiter-challenge
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${WEB_SERVER_PORT}:${WEB_SERVER_PORT}"
+    networks:
+      - default
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=${REDIS_PORT}
+
+volumes:
+  redis-data:
+
+networks:
+  default:
